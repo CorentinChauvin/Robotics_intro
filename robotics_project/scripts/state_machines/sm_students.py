@@ -37,9 +37,10 @@ class StateMachine(object):
         self.place_srv_nm = rospy.get_param(rospy.get_name() + '/place_srv')
         self.cube_pose = rospy.get_param(rospy.get_name() + '/cube_pose').replace(' ', '').split(',')
         self.pick_pose_topic = rospy.get_param(rospy.get_name() + '/pick_pose_topic')
+        self.aruco_pose_topic = rospy.get_param(rospy.get_name() + '/aruco_pose_topic')
 
         # Subscribe to topics
-
+        rospy.Subscriber(self.aruco_pose_topic, PoseStamped, self.callback_aruco_pose)
 
         # Wait for service providers
         rospy.wait_for_service(self.mv_head_srv_nm, timeout=30)
@@ -60,18 +61,26 @@ class StateMachine(object):
         self.pick_srv = rospy.ServiceProxy(self.pick_srv_nm, SetBool)
         self.place_srv = rospy.ServiceProxy(self.place_srv_nm, SetBool)
 
+        # Miscellaneous
+        self.aruco_pose = None
 
         # Init state machine
         self.success_state = -1
         self.error_state = -2
+
         self.state = 0
         rospy.sleep(3)
         self.check_states()
 
 
+    def callback_aruco_pose(self, pose):
+        self.aruco_pose = pose
+
+
     def check_states(self):
 
         while not rospy.is_shutdown() and self.state != self.success_state:
+
             # State 0: tuck the arm
             if self.state == 0:
                 rospy.loginfo("%s: Tucking the arm...", self.node_name)
@@ -92,21 +101,27 @@ class StateMachine(object):
 
                 rospy.sleep(1)
 
-
-            # State 1: pick the cube
+            # State1: look down
             if self.state == 1:
-                # Publish the cube pose
-                pose = PoseStamped()
-                pose.header.frame_id = "base_footprint"
-                pose.pose.position.x = float(self.cube_pose[0])
-                pose.pose.position.y = float(self.cube_pose[1])
-                pose.pose.position.z = float(self.cube_pose[2])
-                pose.pose.orientation.x = float(self.cube_pose[3])
-                pose.pose.orientation.y = float(self.cube_pose[4])
-                pose.pose.orientation.z = float(self.cube_pose[5])
-                pose.pose.orientation.w = float(self.cube_pose[6])
-                self.pick_pose_pub.publish(pose)
+                try:
+                    rospy.loginfo("%s: Lowering robot head", self.node_name)
+                    move_head_srv = rospy.ServiceProxy(self.mv_head_srv_nm, MoveHead)
+                    move_head_req = move_head_srv("down")
 
+                    if move_head_req.success == True:
+                        self.state = 2
+                        rospy.loginfo("%s: Move head down succeded!", self.node_name)
+                    else:
+                        rospy.loginfo("%s: Move head down failed!", self.node_name)
+                        self.state = self.error_state
+                except rospy.ServiceException, e:
+                    print "Service call to move_head server failed: %s"%e
+                    self.state = self.error_state
+
+                rospy.sleep(3)
+
+            # State 2: pick the cube
+            if self.state == 2:
                 # Call the pick service
                 rospy.loginfo("%s: Trying to pick the cube", self.node_name)
                 request = SetBoolRequest()
@@ -115,14 +130,13 @@ class StateMachine(object):
 
                 if answer.success:
                     rospy.loginfo("%s: Cube picked!", self.node_name)
-                    self.state = 2
+                    self.state = 3
                 else:
                     rospy.loginfo("%s: Cube in holidays...", self.node_name)
                     self.state = self.error_state
 
-
-            # State 2: running away from the table
-            if self.state == 2:
+            # State 3: running away from the table
+            if self.state == 3:
                 move_msg = Twist()
                 move_msg.linear.x = -1
 
@@ -134,12 +148,11 @@ class StateMachine(object):
                     rate.sleep()
                     cnt = cnt + 1
 
-                self.state = 3
+                self.state = 4
                 rospy.sleep(1)
 
-
-            # State 3: moving towards table
-            if self.state == 3:
+            # State 4: moving towards table
+            if self.state == 4:
                 move_msg = Twist()
 
                 rate = rospy.Rate(10)
@@ -157,23 +170,35 @@ class StateMachine(object):
                     rate.sleep()
                     cnt = cnt + 1
 
-                self.state = 4
+                self.state = 5
                 rospy.sleep(1)
 
-
-            # State 4: placing the cube
-            if self.state == 4:
+            # State 5: placing the cube
+            if self.state == 5:
                 rospy.loginfo("%s: Trying to place the cube", self.node_name)
                 request = SetBoolRequest()
                 request.data = True
                 answer = self.place_srv(request)
 
                 if answer.success:
-                    rospy.loginfo("%s: Cube placed!", self.node_name)
-                    self.state = self.success_state
+                    rospy.loginfo("%s: Cube maybe placed", self.node_name)
+                    self.state = 6
                 else:
                     rospy.loginfo("%s: Don't want to let the cube go...", self.node_name)
                     self.state = self.error_state
+
+            # State 6: looking for the cube on the table
+            if self.state == 6:
+                rospy.loginfo("%s: Looking for the cube on the table", self.node_name)
+                self.aruco_pose = None
+
+                rospy.sleep(2.0)
+                if self.aruco_pose is None:
+                    rospy.loginfo("%s: Cube not on the table!", self.node_name)
+                    self.state = self.error_state
+                else:
+                    rospy.loginfo("%s: Cube on the table!", self.node_name)
+                    self.state = self.success_state
 
             # Error handling
             if self.state == self.error_state:
