@@ -36,7 +36,7 @@ class StateMachine(object):
         self.pick_srv_nm = rospy.get_param(rospy.get_name() + '/pick_srv')
         self.place_srv_nm = rospy.get_param(rospy.get_name() + '/place_srv')
         self.global_loc_srv_nm = rospy.get_param(rospy.get_name() + '/global_loc_srv')
-        self.cube_pose = rospy.get_param(rospy.get_name() + '/cube_pose').replace(' ', '').split(',')
+        # self.cube_pose = rospy.get_param(rospy.get_name() + '/cube_pose').replace(' ', '').split(',')
         self.aruco_pose_topic = rospy.get_param(rospy.get_name() + '/aruco_pose_topic')
         self.pick_pose_topic = rospy.get_param(rospy.get_name() + '/pick_pose_topic')
         self.place_pose_topic = rospy.get_param(rospy.get_name() + '/place_pose_topic')
@@ -51,7 +51,7 @@ class StateMachine(object):
 
         # Instantiate publishers
         self.cmd_vel_pub = rospy.Publisher(self.cmd_vel_top, Twist, queue_size=10)
-        self.pick_pose_pub = rospy.Publisher(self.pick_pose_topic, PoseStamped, queue_size=10)
+        # self.pick_pose_pub = rospy.Publisher(self.pick_pose_topic, PoseStamped, queue_size=10)
 
         # Set up action clients
         rospy.loginfo("%s: Waiting for play_motion action server...", self.node_name)

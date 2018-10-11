@@ -93,7 +93,7 @@
       <param name="pick_pose_topic"     value="/$(arg namespace_project)/pick_pose"/>
       <param name="place_pose_topic"    value="/$(arg namespace_project)/place_pose"/>
       <param name="aruco_pose_topic"    value="/$(arg namespace_project)/marker_pose_topic"/>
-      <param name="cube_pose"           value="0.50306828716, 0.0245718046511, 0.915538062216, 0.0144467629456, 0.706141958739, 0.707257659069, -0.0306827123383"/>
+      <param name="cube_pose"           value=""/>
       <param name="base_frame"          value="" />
       <param name="move_head_srv"       value="/$(arg namespace_project)/move_head_gui" />
     </node>
