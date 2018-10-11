@@ -2,7 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import PoseArray, PoseStamped
-from IPython import embed
+# from IPython import embed
 
 class NavPosesPublisher(object):
     def __init__(self):
@@ -18,7 +18,7 @@ class NavPosesPublisher(object):
         self.poses_publisher()
 
     def poses_publisher(self):
-               
+
         # Pick pose
         pick_pose_msg = PoseStamped()
         pick_pose_msg.header.frame_id = self.frame
@@ -29,7 +29,7 @@ class NavPosesPublisher(object):
         pick_pose_msg.pose.orientation.y = float(self.pick_pose[4])
         pick_pose_msg.pose.orientation.z = float(self.pick_pose[5])
         pick_pose_msg.pose.orientation.w = float(self.pick_pose[6])
-        
+
         # Place pose
         place_pose_msg = PoseStamped()
         place_pose_msg.header.frame_id = self.frame
@@ -44,22 +44,22 @@ class NavPosesPublisher(object):
         pick_pub = rospy.Publisher(self.pick_pose_top, PoseStamped, queue_size=10)
         place_pub = rospy.Publisher(self.place_pose_top, PoseStamped, queue_size=10)
         rate = rospy.Rate(1) # 1hz
-        
+
         # Main loop
         while not rospy.is_shutdown():
 
             pick_pose_msg.header.stamp = rospy.Time.now()
             place_pose_msg.header.stamp = rospy.Time.now()
-            
+
             pick_pub.publish(pick_pose_msg)
             place_pub.publish(place_pose_msg)
-            
+
             rate.sleep()
 
 if __name__ == '__main__':
 
     rospy.init_node('poses_publisher')
-    
+
     try:
         NavPosesPublisher()
     except rospy.ROSInterruptException:
